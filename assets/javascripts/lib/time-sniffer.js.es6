@@ -1,6 +1,7 @@
 const timeStartRegex = /([^\d\w:]|^)/;
-const timeRegex = /(\d{1,2}):(\d{2})(:(\d{2}))?/;
 const timeEndRegex = /([^\d\w:]|$)/;
+
+const timeRegex = /(\d{1,2}):(\d{2})(:(\d{2}))?/;
 
 class ParseError {}
 
@@ -188,12 +189,43 @@ export class TimeSniffer {
   }
 
   parseYearLastDate() {
-    const startRegex = /[^\d\w/-]|^/;
+    const startRegex = /[^\d\w-/]|^/;
+    const endRegex = /[^\d\w-/]|$/;
     const dateRegex = /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/;
-    const endRegex = /[^\d\w/-]|$/;
 
     const dateMatch = this.parseRegex(dateRegex);
     console.log(dateMatch);
+
+    let day, month;
+    if (this.dateOrder === "us") {
+      month = parseInt(dateMatch[1]);
+      day = parseInt(dateMatch[2]);
+    } else {
+      day = parseInt(dateMatch[1]);
+      month = parseInt(dateMatch[2]);
+    }
+
+    let year = dateMatch[3];
+    if (year.length == 2) {
+      year = parseInt(year);
+      const currentYear = moment(this.relativeTo).year;
+      const currentCentury = currentYear - (currentYear % 100);
+      const previousCentury = currentCentury - 100;
+      const nextCentury = currentCentury + 100;
+
+      const options = [
+        previousCentury + year,
+        currentCentury + year,
+        nextCentury + year
+      ];
+
+      year = options.map(x => [Math.abs(x - currentYear), x]).sort()[0][1];
+    } else if (year.length == 4) {
+      year = parseInt(year);
+    } else {
+      throw new ParseError;
+    }
+
     return {
       
     }
