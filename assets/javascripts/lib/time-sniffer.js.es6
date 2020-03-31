@@ -2,6 +2,7 @@ const timeStartRegex = /([^\d\w:]|^)/;
 const timeEndRegex = /([^\d\w:]|$)/;
 
 const timeRegex = /(\d{1,2}):(\d{2})(:(\d{2}))?/;
+const dateRegex = /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/;
 
 class ParseError {}
 
@@ -43,7 +44,7 @@ export class InputSegment {
 
 export class Interval {
   constructor(from, to, segment) {
-    if (!(this.from = from)) { throw "expected from in Interval"; }
+    if (!(this.from = from)) { throw `expected from in Interval, got ${from}`; }
     if (!(this.to = to)) { throw "expected to"; }
     if (!(this.segment = segment)) { throw "expected segment"; }
   }
@@ -90,7 +91,7 @@ export class TimeSniffer {
     ];
   }
 
-  option(fn) {
+  attempt(fn) {
     let oldPosition = this.position;
     try {
       return fn();
@@ -148,7 +149,7 @@ export class TimeSniffer {
     let lowestRecoverTo = undefined;
 
     for (let parser of parsers) {
-      this.option(() => {
+      this.attempt(() => {
         const [recoverTo, [segment, value]] = this.peek(parser);
 
         if (lowestStart > segment.from) {
@@ -191,10 +192,8 @@ export class TimeSniffer {
   parseYearLastDate() {
     const startRegex = /[^\d\w-/]|^/;
     const endRegex = /[^\d\w-/]|$/;
-    const dateRegex = /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/;
 
     const dateMatch = this.parseRegex(dateRegex);
-    console.log(dateMatch);
 
     let day, month;
     if (this.dateOrder === "us") {
@@ -206,9 +205,9 @@ export class TimeSniffer {
     }
 
     let year = dateMatch[3];
-    if (year.length == 2) {
+    if (year.length === 2) {
       year = parseInt(year);
-      const currentYear = moment(this.relativeTo).year;
+      const currentYear = moment(this.relativeTo).year();
       const currentCentury = currentYear - (currentYear % 100);
       const previousCentury = currentCentury - 100;
       const nextCentury = currentCentury + 100;
@@ -220,21 +219,19 @@ export class TimeSniffer {
       ];
 
       year = options.map(x => [Math.abs(x - currentYear), x]).sort()[0][1];
-    } else if (year.length == 4) {
+    } else if (year.length === 4) {
       year = parseInt(year);
     } else {
       throw new ParseError;
     }
 
-    return {
-      
-    }
+    return moment(`${year}-${month}-${day}`);
   }
 
   parseTimeWithOptionalZone() {
     const time = this.parseTime();
-    this.option(() => this.parseWhitespace());
-    const zone = this.option(() => this.parseTimezone());
+    this.attempt(() => this.parseWhitespace());
+    const zone = this.attempt(() => this.parseTimezone());
     return { time, zone };
   }
 
@@ -246,8 +243,8 @@ export class TimeSniffer {
     const [segment, match] = this.parseRegexWithSegment(regex);
 
     return new Interval(
-      moment(this.relativeTo).add(1, "day").startOf("day"),
-      moment(this.relativeTo).add(2, "day").startOf("day"),
+      moment(this.relativeTo).add(1, "day").startOf("day").toISOString(),
+      moment(this.relativeTo).add(2, "day").startOf("day").toISOString(),
       segment
     );
   }
@@ -260,8 +257,8 @@ export class TimeSniffer {
     const [segment, match] = this.parseRegexWithSegment(regex);
 
     return new Interval(
-      moment(this.relativeTo).subtract(1, "day").startOf("day"),
-      moment(this.relativeTo).startOf("day"),
+      moment(this.relativeTo).subtract(1, "day").startOf("day").toISOString(),
+      moment(this.relativeTo).startOf("day").toISOString(),
       segment
     );
   }
@@ -271,12 +268,25 @@ export class TimeSniffer {
     return this.segmentFor(() => this.parseTimeWithOptionalZone());
   }
 
+  dateMatcher() {
+    this.moveToMatch(dateRegex);
+    const [segment, date] = this.segmentFor(() => this.parseYearLastDate());
+
+    console.log("this is the one I care about", date.isValid(), date, moment(date), moment(date).toISOString());
+
+    return new Interval(
+      moment(date).toISOString(),
+      moment(date).add(1, "day").toISOString(),
+      segment
+    )
+  }
+
   [Symbol.iterator]() {
     return this;
   }
 
   next() {
-    let parsed = this.option(() => {
+    let parsed = this.attempt(() => {
       return this.firstOf([
         () => {
           const match = this.parseTomorrow();
@@ -284,6 +294,10 @@ export class TimeSniffer {
         },
         () => {
           const match = this.parseYesterday();
+          return [match.segment, match];
+        },
+        () => {
+          const match = this.dateMatcher();
           return [match.segment, match];
         }
       ]);

@@ -55,6 +55,7 @@ QUnit.assert.sniffsCorrectly = function(input, expectations) {
         match.done,
         "TimeSniffer should be done on last iteration."
       );
+      break;
     }
 
     if (iterationIndex > expectedIterationsCount) {
@@ -85,10 +86,37 @@ QUnit.test("should match tomorrow", assert => {
 
   assert.sniffsCorrectly("tomorrow", [
     {
-      fromDate: "2020-03-20T00:00:00.00Z",
-      toDate: "2020-04-20T00:00:00.00Z",
+      fromDate: "2020-02-21T00:00:00.000Z",
+      toDate: "2020-02-22T00:00:00.000Z",
       startIndex: 0,
       endIndex: 8
     }
   ]);
 });
+
+QUnit.test("should match yesterday", assert => {
+  assert.test.testEnvironment.debugging = true;
+
+  assert.sniffsCorrectly("yesterday", [
+    {
+      fromDate: "2020-02-19T00:00:00.000Z",
+      toDate: "2020-02-20T00:00:00.000Z",
+      startIndex: 0,
+      endIndex: 9
+    }
+  ]);
+});
+
+QUnit.test("should match a date", assert => {
+  assert.test.testEnvironment.debugging = true;
+
+  assert.sniffsCorrectly("Let's meet up on 25/4/20", [
+    {
+      fromDate: "2020-04-25T00:00:00.000Z",
+      toDate: "2020-04-26T00:00:00.000Z",
+      startIndex: 17,
+      endIndex: 24
+    }
+  ]);
+});
+
