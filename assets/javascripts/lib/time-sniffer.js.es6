@@ -1,3 +1,7 @@
+const timeStartRegex = /([^\d\w:]|^)/;
+const timeRegex = /(\d{1,2}):(\d{2})(:(\d{2}))?/;
+const timeEndRegex = /([^\d\w:]|$)/;
+
 class ParseError {}
 
 class SniffedTime {
@@ -72,11 +76,9 @@ export class TimeSniffer {
   }
 
   segmentFor(fn) {
-
     const firstPosition = this.position;
     const result = fn();
     const lastPosition = this.position;
-
 
     return [
       new InputSegment(
@@ -111,8 +113,8 @@ export class TimeSniffer {
     }
   }
 
-  moveToMatch(regexString) {
-    const regex = new RegExp(regexString, "gi");
+  moveToMatch(originalRegex) {
+    const regex = new RegExp(originalRegex.source, "gi");
     regex.lastIndex = this.position;
 
     const match = regex.exec(this.input);
@@ -123,8 +125,8 @@ export class TimeSniffer {
     }
   }
 
-  parseRegex(regexString) {
-    const regex = new RegExp(regexString, "yi");
+  parseRegex(originalRegex) {
+    const regex = new RegExp(originalRegex.source, "yi");
     regex.lastIndex = this.position;
     const match = regex.exec(this.input);
     if (match) {
@@ -133,6 +135,10 @@ export class TimeSniffer {
       throw new ParseError;
     }
     return match;
+  }
+
+  parseRegexWithSegment(regex) {
+    return this.segmentFor(() => this.parseRegex(regex));
   }
 
   firstOf(parsers) {
@@ -160,14 +166,52 @@ export class TimeSniffer {
     }
   }
 
+  parseWhitespace() {
+    const regex = /\s+/;
+    this.parseRegex(regex);
+  }
+
+  parseTimezone() {
+    const regex = /\b(Z|UTC)\b/;
+    this.parseRegex(regex);
+    return "UTC";
+  }
+
+  parseTime() {
+    const timeMatch = this.parseRegex(timeRegex);
+
+    return {
+      hour: parseInt(timeMatch[1]),
+      minute: parseInt(timeMatch[2]),
+      second: timeMatch[4] ? parseInt(timeMatch[4]) : 0
+    }
+  }
+
+  parseYearLastDate() {
+    const startRegex = /[^\d\w/-]|^/;
+    const dateRegex = /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/;
+    const endRegex = /[^\d\w/-]|$/;
+
+    const dateMatch = this.parseRegex(dateRegex);
+    console.log(dateMatch);
+    return {
+      
+    }
+  }
+
+  parseTimeWithOptionalZone() {
+    const time = this.parseTime();
+    this.option(() => this.parseWhitespace());
+    const zone = this.option(() => this.parseTimezone());
+    return { time, zone };
+  }
+
   parseTomorrow() {
-    this.moveToMatch("tomorrow");
+    const regex = /\btomorrow\b/;
 
-    let [segment, match] = this.segmentFor(() => {
-      return this.parseRegex("tomorrow");
-    });
+    this.moveToMatch(regex);
 
-    console.log('yesterday match', segment);
+    const [segment, match] = this.parseRegexWithSegment(regex);
 
     return new Interval(
       moment(this.relativeTo).add(1, "day").startOf("day"),
@@ -177,19 +221,22 @@ export class TimeSniffer {
   }
 
   parseYesterday() {
-    this.moveToMatch("yesterday");
+    const regex = /\byesterday\b/;
 
-    let [segment, match] = this.segmentFor(() => {
-      return this.parseRegex("yesterday");
-    });
+    this.moveToMatch(regex);
 
-    console.log('yesterday match', segment);
+    const [segment, match] = this.parseRegexWithSegment(regex);
 
     return new Interval(
       moment(this.relativeTo).subtract(1, "day").startOf("day"),
       moment(this.relativeTo).startOf("day"),
       segment
     );
+  }
+
+  timeMatcher() {
+    this.moveToMatch(timeRegex);
+    return this.segmentFor(() => this.parseTimeWithOptionalZone());
   }
 
   [Symbol.iterator]() {
