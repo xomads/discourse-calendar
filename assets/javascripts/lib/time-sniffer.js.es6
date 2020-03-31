@@ -8,9 +8,15 @@ class ParseError {}
 
 class SniffedTime {
   constructor(opts = {}) {
-    if (!(this.year = opts.year)) { throw "expected year"; }
-    if (!(this.month = opts.month)) { throw "expected month"; }
-    if (!(this.day = opts.day)) { throw "expected day"; }
+    if (!(this.year = opts.year)) {
+      throw "expected year";
+    }
+    if (!(this.month = opts.month)) {
+      throw "expected month";
+    }
+    if (!(this.day = opts.day)) {
+      throw "expected day";
+    }
     this.hour = opts.hour || 0;
     this.minute = opts.minute || 0;
     this.second = opts.second || 0;
@@ -18,55 +24,77 @@ class SniffedTime {
   }
 
   isSame(other) {
-    return (other instanceof SniffedTime) &&
+    return (
+      other instanceof SniffedTime &&
       other.year === this.year &&
       other.month === this.month &&
       other.day === this.day &&
       other.hour === this.hour &&
       other.minute === this.minute &&
       other.second === this.second &&
-      other.timezone === this.timezone;
+      other.timezone === this.timezone
+    );
   }
 }
 
 export class InputSegment {
   constructor(from, to) {
-    if ((this.from = from) === undefined) { throw "expected from in InputSegment"; }
-    if (!(this.to = to)) { throw "expected to"; }
+    if ((this.from = from) === undefined) {
+      throw "expected from in InputSegment";
+    }
+    if (!(this.to = to)) {
+      throw "expected to";
+    }
   }
 
   isSame(other) {
-    return other instanceof InputSegment &&
+    return (
+      other instanceof InputSegment &&
       this.from === other.from &&
-      this.to === other.to;
+      this.to === other.to
+    );
   }
 }
 
 export class Interval {
   constructor(from, to, segment) {
-    if (!(this.from = from)) { throw `expected from in Interval, got ${from}`; }
-    if (!(this.to = to)) { throw "expected to"; }
-    if (!(this.segment = segment)) { throw "expected segment"; }
+    if (!(this.from = from)) {
+      throw `expected from in Interval, got ${from}`;
+    }
+    if (!(this.to = to)) {
+      throw "expected to";
+    }
+    if (!(this.segment = segment)) {
+      throw "expected segment";
+    }
   }
 
   isSame(other) {
-    return other instanceof Interval &&
-      moment(this.from).isSame(other.from) &&
-      moment(this.to).isSame(other.to) &&
-      this.segment.isSame(other.segment);
+    return (
+      other instanceof Interval &&
+      moment.utc(this.from).isSame(other.from) &&
+      moment.utc(this.to).isSame(other.to) &&
+      this.segment.isSame(other.segment)
+    );
   }
 }
 
 export class Event {
   constructor(at, segment) {
-    if (!(this.at = at)) { throw "expected at"; }
-    if (!(this.segment = segment)) { throw "expected segment"; }
+    if (!(this.at = at)) {
+      throw "expected at";
+    }
+    if (!(this.segment = segment)) {
+      throw "expected segment";
+    }
   }
 
   isSame(other) {
-    return other instanceof Interval &&
-      moment(this.at).isSame(other.at) &&
-      this.segment.isSame(other.segment);
+    return (
+      other instanceof Interval &&
+      moment.utc(this.at).isSame(other.at) &&
+      this.segment.isSame(other.segment)
+    );
   }
 }
 
@@ -74,7 +102,9 @@ export class TimeSniffer {
   constructor(input, opts) {
     this.input = input;
     this.position = 0;
-    if (!(this.relativeTo = opts.relativeTo)) { throw "expected relativeTo"; }
+    if (!(this.relativeTo = opts.relativeTo)) {
+      throw "expected relativeTo";
+    }
   }
 
   segmentFor(fn) {
@@ -82,13 +112,7 @@ export class TimeSniffer {
     const result = fn();
     const lastPosition = this.position;
 
-    return [
-      new InputSegment(
-        firstPosition,
-        lastPosition
-      ),
-      result
-    ];
+    return [new InputSegment(firstPosition, lastPosition), result];
   }
 
   attempt(fn) {
@@ -123,7 +147,7 @@ export class TimeSniffer {
     if (match) {
       this.position = match.index;
     } else {
-      throw new ParseError;
+      throw new ParseError();
     }
   }
 
@@ -134,7 +158,7 @@ export class TimeSniffer {
     if (match) {
       this.position = regex.lastIndex;
     } else {
-      throw new ParseError;
+      throw new ParseError();
     }
     return match;
   }
@@ -164,7 +188,7 @@ export class TimeSniffer {
       this.position = lowestRecoverTo;
       return lowestValue;
     } else {
-      throw new ParseError;
+      throw new ParseError();
     }
   }
 
@@ -186,7 +210,7 @@ export class TimeSniffer {
       hour: parseInt(timeMatch[1]),
       minute: parseInt(timeMatch[2]),
       second: timeMatch[4] ? parseInt(timeMatch[4]) : 0
-    }
+    };
   }
 
   parseYearLastDate() {
@@ -207,7 +231,7 @@ export class TimeSniffer {
     let year = dateMatch[3];
     if (year.length === 2) {
       year = parseInt(year);
-      const currentYear = moment(this.relativeTo).year();
+      const currentYear = moment.utc(this.relativeTo).year();
       const currentCentury = currentYear - (currentYear % 100);
       const previousCentury = currentCentury - 100;
       const nextCentury = currentCentury + 100;
@@ -222,10 +246,10 @@ export class TimeSniffer {
     } else if (year.length === 4) {
       year = parseInt(year);
     } else {
-      throw new ParseError;
+      throw new ParseError();
     }
 
-    return moment(`${year}-${month}-${day}`);
+    return moment.utc(`${year}-${month}-${day}`);
   }
 
   parseTimeWithOptionalZone() {
@@ -243,8 +267,16 @@ export class TimeSniffer {
     const [segment, match] = this.parseRegexWithSegment(regex);
 
     return new Interval(
-      moment(this.relativeTo).add(1, "day").startOf("day").toISOString(),
-      moment(this.relativeTo).add(2, "day").startOf("day").toISOString(),
+      moment
+        .utc(this.relativeTo)
+        .add(1, "day")
+        .startOf("day")
+        .toISOString(),
+      moment
+        .utc(this.relativeTo)
+        .add(2, "day")
+        .startOf("day")
+        .toISOString(),
       segment
     );
   }
@@ -257,8 +289,15 @@ export class TimeSniffer {
     const [segment, match] = this.parseRegexWithSegment(regex);
 
     return new Interval(
-      moment(this.relativeTo).subtract(1, "day").startOf("day").toISOString(),
-      moment(this.relativeTo).startOf("day").toISOString(),
+      moment
+        .utc(this.relativeTo)
+        .subtract(1, "day")
+        .startOf("day")
+        .toISOString(),
+      moment
+        .utc(this.relativeTo)
+        .startOf("day")
+        .toISOString(),
       segment
     );
   }
@@ -272,13 +311,14 @@ export class TimeSniffer {
     this.moveToMatch(dateRegex);
     const [segment, date] = this.segmentFor(() => this.parseYearLastDate());
 
-    console.log("this is the one I care about", date.isValid(), date, moment(date), moment(date).toISOString());
-
     return new Interval(
-      moment(date).toISOString(),
-      moment(date).add(1, "day").toISOString(),
+      moment.utc(date).toISOString(),
+      moment
+        .utc(date)
+        .add(1, "day")
+        .toISOString(),
       segment
-    )
+    );
   }
 
   [Symbol.iterator]() {

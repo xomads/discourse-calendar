@@ -4,7 +4,7 @@ const sandbox = sinon.createSandbox();
 
 QUnit.module("lib:more-time-sniffer", {
   beforeEach() {
-    const now = moment("2020-02-20 13:00:00");
+    const now = moment.utc("2020-02-20 13:00:00");
     sandbox.useFakeTimers(now.valueOf());
 
     this.context = {
@@ -82,8 +82,6 @@ QUnit.assert.sniffsCorrectly = function(input, expectations) {
 };
 
 QUnit.test("should match tomorrow", assert => {
-  assert.test.testEnvironment.debugging = true;
-
   assert.sniffsCorrectly("tomorrow", [
     {
       fromDate: "2020-02-21T00:00:00.000Z",
@@ -95,8 +93,6 @@ QUnit.test("should match tomorrow", assert => {
 });
 
 QUnit.test("should match yesterday", assert => {
-  assert.test.testEnvironment.debugging = true;
-
   assert.sniffsCorrectly("yesterday", [
     {
       fromDate: "2020-02-19T00:00:00.000Z",
@@ -108,7 +104,7 @@ QUnit.test("should match yesterday", assert => {
 });
 
 QUnit.test("should match a date", assert => {
-  assert.test.testEnvironment.debugging = true;
+  // assert.test.testEnvironment.debugging = true;
 
   assert.sniffsCorrectly("Let's meet up on 25/4/20", [
     {
@@ -118,5 +114,22 @@ QUnit.test("should match a date", assert => {
       endIndex: 24
     }
   ]);
-});
 
+  assert.sniffsCorrectly("Let's meet up on 25/04/20", [
+    {
+      fromDate: "2020-04-25T00:00:00.000Z",
+      toDate: "2020-04-26T00:00:00.000Z",
+      startIndex: 17,
+      endIndex: 25
+    }
+  ]);
+
+  assert.sniffsCorrectly("Let's meet up on 25/4/20 if you want", [
+    {
+      fromDate: "2020-04-25T00:00:00.000Z",
+      toDate: "2020-04-26T00:00:00.000Z",
+      startIndex: 17,
+      endIndex: 24
+    }
+  ]);
+});
