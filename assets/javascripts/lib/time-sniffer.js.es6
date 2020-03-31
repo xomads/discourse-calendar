@@ -136,17 +136,13 @@ export class TimeSniffer {
   }
 
   firstOf(parsers) {
-    debugger
-
     let lowestStart = Infinity;
     let lowestValue = undefined;
     let lowestRecoverTo = undefined;
 
     for (let parser of parsers) {
       this.option(() => {
-        const [recoverTo, [segment, value]] = this.peek(() => {
-          return this.segmentFor(parser);
-        });
+        const [recoverTo, [segment, value]] = this.peek(parser);
 
         if (lowestStart > segment.from) {
           lowestStart = segment.from;
@@ -171,6 +167,8 @@ export class TimeSniffer {
       return this.parseRegex("tomorrow");
     });
 
+    console.log('yesterday match', segment);
+
     return new Interval(
       moment(this.relativeTo).add(1, "day").startOf("day"),
       moment(this.relativeTo).add(2, "day").startOf("day"),
@@ -179,12 +177,13 @@ export class TimeSniffer {
   }
 
   parseYesterday() {
-
     this.moveToMatch("yesterday");
 
     let [segment, match] = this.segmentFor(() => {
       return this.parseRegex("yesterday");
     });
+
+    console.log('yesterday match', segment);
 
     return new Interval(
       moment(this.relativeTo).subtract(1, "day").startOf("day"),
@@ -200,8 +199,14 @@ export class TimeSniffer {
   next() {
     let parsed = this.option(() => {
       return this.firstOf([
-        () => { return this.parseTomorrow(); },
-        () => { return this.parseYesterday(); }
+        () => {
+          const match = this.parseTomorrow();
+          return [match.segment, match];
+        },
+        () => {
+          const match = this.parseYesterday();
+          return [match.segment, match];
+        }
       ]);
     });
 
