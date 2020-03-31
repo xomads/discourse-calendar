@@ -207,9 +207,9 @@ export class TimeSniffer {
     const timeMatch = this.parseRegex(timeRegex);
 
     return {
-      hour: parseInt(timeMatch[1]),
-      minute: parseInt(timeMatch[2]),
-      second: timeMatch[4] ? parseInt(timeMatch[4]) : 0
+      hour: parseInt(timeMatch[1], 10),
+      minute: parseInt(timeMatch[2], 10),
+      second: timeMatch[4] ? parseInt(timeMatch[4], 10) : 0
     };
   }
 
@@ -221,16 +221,16 @@ export class TimeSniffer {
 
     let day, month;
     if (this.dateOrder === "us") {
-      month = parseInt(dateMatch[1]);
-      day = parseInt(dateMatch[2]);
+      month = parseInt(dateMatch[1], 10);
+      day = parseInt(dateMatch[2], 10);
     } else {
-      day = parseInt(dateMatch[1]);
-      month = parseInt(dateMatch[2]);
+      day = parseInt(dateMatch[1], 10);
+      month = parseInt(dateMatch[2], 10);
     }
 
     let year = dateMatch[3];
     if (year.length === 2) {
-      year = parseInt(year);
+      year = parseInt(year, 10);
       const currentYear = moment.utc(this.relativeTo).year();
       const currentCentury = currentYear - (currentYear % 100);
       const previousCentury = currentCentury - 100;
@@ -244,7 +244,7 @@ export class TimeSniffer {
 
       year = options.map(x => [Math.abs(x - currentYear), x]).sort()[0][1];
     } else if (year.length === 4) {
-      year = parseInt(year);
+      year = parseInt(year, 10);
     } else {
       throw new ParseError();
     }
